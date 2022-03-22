@@ -73,9 +73,10 @@ def Move_dir(dup_map,map, action, state, index,Parent_cost,i):
 	return dup_map,map, x, y, theta, cost, index, 0
 
 
-def New_node(map, OpenList, ClosedList, Goal_node_x, Goal_node_y, Goal_angle, index, dup_map,a):
+def New_node(map, OpenList, ClosedList, Goal_node_x, Goal_node_y, Goal_angle, index, dup_map,a, exp):
 	M = heapq.heappop(OpenList)
 	ClosedList.append(M)
+
 	y_ = M[3][1]
 	if y_ % 1 >= 0.5:
 		y_ = math.floor(y_) + 0.5
@@ -94,9 +95,9 @@ def New_node(map, OpenList, ClosedList, Goal_node_x, Goal_node_y, Goal_angle, in
 	x_ = int(2 * x_)
 
 	if ((M[3][0]-Goal_node_x)**2+(M[3][1]-Goal_node_y)**2)**0.5 <=1.5 and M[3][2] == Goal_angle:
-		return dup_map, map, OpenList, ClosedList, index, 1
+		return dup_map, map, OpenList, ClosedList, index, 1, exp
 	elif dup_map[y_][x_][theta_]==2:
-		return dup_map, map, OpenList, ClosedList, index, 0
+		return dup_map, map, OpenList, ClosedList, index, 0, exp
 
 	dup_map[y_][x_][theta_] = 2
 	# theta1 = theta_ * np.pi/180
@@ -108,9 +109,11 @@ def New_node(map, OpenList, ClosedList, Goal_node_x, Goal_node_y, Goal_angle, in
 		if t==1:
 			if count == 0:
 				new_node = (((Goal_node_x-new_node_x)**2+(Goal_node_y-new_node_y)**2)**0.5+C2C, index, M[1], (new_node_x, new_node_y, new_node_angle), C2C)
+				exp.append([[M[3][0], M[3][1]], [new_node[3][0], new_node[3][1]]])
+				# print(exp)
 				heapq.heappush(OpenList, new_node)
 
-	return dup_map, map, OpenList, ClosedList, index, 0
+	return dup_map, map, OpenList, ClosedList, index, 0, exp
 
 
 def generate_path(lst, ClosedList, idx):
@@ -132,25 +135,27 @@ def main():
 
 	while(flag):
 		print('Enter the Starting Coordinates')
-		start_node_x = int(input("Enter the X coordinate of start position :")) #250
-		start_node_y = int(input("Enter the Y coordinate of start position :")) #150
+		start_node_x = int(input("Enter the X coordinate of start position :"))
+		start_node_y = int(input("Enter the Y coordinate of start position :"))
 		start_angle = int(input("Enter theta of start position :"))
 		print('Enter the Goal Coordinates')
-		goal_node_x = int(input("Enter the X coordinate of goal position :")) #30
-		goal_node_y = int(input("Enter the Y coordinate of goal position :")) #30
+		goal_node_x = int(input("Enter the X coordinate of goal position :"))
+		goal_node_y = int(input("Enter the Y coordinate of goal position :"))
 		goal_angle = int(input("Enter theta of goal position :"))
-		# print('Enter the action length')
 		a = int(input("Enter the action length :"))
 		if start_node_x < 0 or start_node_y < 0 or start_node_x > 399 or start_node_y > 249 or goal_node_x < 0 or goal_node_y < 0 or goal_node_x > 399 or goal_node_y > 249:
-			print("Coordinates entered are outside the map")
+			print("Coordinates entered are outside the map\n")
 		elif start_node_x==goal_node_x and start_node_y==goal_node_y:
-			print('Starting node and Goal node are same. Please enter different sets of matrices for each.')
+			print('Starting node and Goal node are same. Please enter different sets of matrices for each.\n')
 		elif map[start_node_y][start_node_x] == 10000 or map[goal_node_y][goal_node_x] == 10000:
-			print("Coordinates are inside the Obstacle")
+			print("Coordinates are inside the Obstacle\n")
 		elif goal_angle % 30 != 0:
-			print("Goal Theta value is wrong")
+			print("Goal Theta value is wrong\n")
 		elif start_angle % 30 != 0:
-			print("Start Theta value is wrong")
+			print("Start Theta value is wrong\n")
+		elif a < 0 or a > 10:
+			print("Step size incorrect\n")
+
 		else:
 			flag = 0
 
@@ -170,8 +175,9 @@ def main():
 	map_color1 = np.zeros((250, 400,3))
 	index = 0
 	i=0
+	exp = []
 	while len(OpenList) and not goal_reached:
-		dup_map, map, OpenList, ClosedList, index, goal_reached = New_node(map, OpenList, ClosedList, goal_node_x, goal_node_y,goal_angle,index, dup_map,a)
+		dup_map, map, OpenList, ClosedList, index, goal_reached, exp = New_node(map, OpenList, ClosedList, goal_node_x, goal_node_y,goal_angle,index, dup_map, a, exp)
 		if len(OpenList) ==0 and not goal_reached:
 			print('Solution Not Found')
 			quit()
@@ -186,42 +192,58 @@ def main():
 	print('Map explored and optimal path found.')
 
 	map = map_gen()
-	exp = []
-	for	i in range(0, len(ClosedList)-1):
-		# map[ClosedList[i][3][1]][ClosedList[i][3][0]]=0.7
-		if i ==0:
-			map_color = map
-			map_color_r[map_color == 0] = 1
-			map_color_b[map_color == 0.7] = 1
-			map_color_g[map_color == 10000] = 1
-			map_color1[:, :, 0] = map_color_r * 255
-			map_color1[:, :, 1] = map_color_b * 255
-			map_color1[:, :, 2] = map_color_g * 255
-			map_color1 = cv2.resize(map_color1, (800, 500))
-		c = 0
-	#
-		for j in range(i, len(ClosedList)):
-			if ClosedList[i][1] == ClosedList[j][2]:
-				# x1 = 2 * int(ClosedList[i][3][0])
-				# y1 = 2 * int(ClosedList[i][3][1])
-				# x2 = 2 * int(ClosedList[j][3][0])
-				# y2 = 2 * int(ClosedList[j][3][1])
-				# exp.append([[x1, y1], [x2, y2]])
-				cv2.line(map_color1, (2*int(ClosedList[i][3][0]), 2*int(ClosedList[i][3][1])), (2*int(ClosedList[j][3][0]), int(2*ClosedList[j][3][1])), [0, 200, 0], 1)
-				cv2.imshow("A*", map_color1)
-				cv2.waitKey(1)
-				c += 1
-			if c == 5:
-				break
+	# exp = []
+	# for	i in range(0, len(ClosedList)-1):
+	# 	# map[ClosedList[i][3][1]][ClosedList[i][3][0]]=0.7
+	# 	if i ==0:
+	# 		map_color = map
+	# 		map_color_r[map_color == 0] = 1
+	# 		map_color_b[map_color == 0.7] = 1
+	# 		map_color_g[map_color == 10000] = 1
+	# 		map_color1[:, :, 0] = map_color_r * 255
+	# 		map_color1[:, :, 1] = map_color_b * 255
+	# 		map_color1[:, :, 2] = map_color_g * 255
+	# 		map_color1 = cv2.resize(map_color1, (800, 500))
+	# 	c = 0
+	# #
+	# 	for j in range(i, len(ClosedList)):
+	# 		if ClosedList[i][1] == ClosedList[j][2]:
+	# 			# x1 = 2 * int(ClosedList[i][3][0])
+	# 			# y1 = 2 * int(ClosedList[i][3][1])
+	# 			# x2 = 2 * int(ClosedList[j][3][0])
+	# 			# y2 = 2 * int(ClosedList[j][3][1])
+	# 			# exp.append([[x1, y1], [x2, y2]])
+	# 			cv2.line(map_color1, (2*int(ClosedList[i][3][0]), 2*int(ClosedList[i][3][1])), (2*int(ClosedList[j][3][0]), int(2*ClosedList[j][3][1])), [0, 200, 0], 1)
+	# 			cv2.imshow("A*", map_color1)
+	# 			cv2.waitKey(1)
+	# 			c += 1
+	# 		if c == 5:
+	# 			break
+
+	map_color = map
+	map_color_r[map_color == 0] = 1
+	map_color_b[map_color == 0.7] = 1
+	map_color_g[map_color == 10000] = 1
+	map_color1[:, :, 0] = map_color_r * 255
+	map_color1[:, :, 1] = map_color_b * 255
+	map_color1[:, :, 2] = map_color_g * 255
+	map_color1 = cv2.resize(map_color1, (800, 500))
+
+	for i in range(0, len(exp)):
+		# print(exp[i][0][0])
+		# print(exp[i][0][1])
+		cv2.line(map_color1, (2 * int(exp[i][0][0]), 2 * int(exp[i][0][1])), (2 * int(exp[i][1][0]), 2 * int(exp[i][1][1])), [0, 200, 0], 1)
+		cv2.imshow("A*", map_color1)
+		cv2.waitKey(1)
+	# 	print("T")
+
 
 	path = [elem for elem in lst][::-1]
-
 
 	for i in range(0, len(path)-1):
 		cv2.line(map_color1, (2*int(path[i][0]), 2*int(path[i][1])), (2*int(path[i + 1][0]), 2*int(path[i+1][1])), [255, 255, 255], 2)
 		cv2.imshow("A*", map_color1)
 		cv2.waitKey(100)
-
 
 
 if __name__ == '__main__':

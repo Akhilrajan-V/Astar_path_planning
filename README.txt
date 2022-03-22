@@ -14,3 +14,4 @@
 
 
 Note: Plotting the exploration may take some time depending on start and end positions. 
+Note: Please take into consideration the clearance allotted for the map. ie, x>15 y>15.  (x,y) = (10,10) will give an error.
